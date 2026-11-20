@@ -8,4 +8,38 @@
     <p>Statut: {{demande.statut}} </p>
     <p>Date: {{demande.dateCreation|date('d/m/Y H:i')}}
     </p>
-{%endblock%}
+
+<h2>Historique des statuts</h2>
+
+{% for entree in demande.historiqueStatuts %}
+    <article class="historique-entree">
+        <p><strong>{{ entree.statut }}</strong></p>
+        <p class="historique-date">
+            {{ entree.date|date('d/m/Y à H:i') }}
+        </p>
+
+        {% if entree.commentaire %}
+            <p>{{ entree.commentaire }}</p>
+        {% endif %}
+    </article>
+{% else %}
+    <p>Aucun historique pour cette demande.</p>
+{% endfor %}
+
+<style>
+    .historique-entree {
+        padding: 1rem 0;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .historique-entree:first-of-type {
+        border-top: 1px solid #ddd;
+    }
+
+    .historique-date {
+        color: #666;
+        font-size: 0.9rem;
+    }
+</style>
+
+{% endblock %}

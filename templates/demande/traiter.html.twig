@@ -8,6 +8,9 @@
             <a href="{{ path('app_demande_show', { id: demande.id }) }}">
                 Voir le détail
             </a>
+            <a href="{{ path('app_demande_changer_statut', { id: demande.id }) }}">
+                Changer le statut
+            </a>
         </article>
     {% else %}
         <p>Aucune demande pour le moment.</p>

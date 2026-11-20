@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Changer statut{% endblock %}
+
+{% block body %}
+    <h1>Demande n° {{demande.id}}</h1>
+
+    {{ form_start(form) }}
+        {{ form_row(form.statut) }}
+        {{ form_row(form.commentaire) }}
+
+        <button type="submit">Envoyer la demande</button>
+    {{ form_end(form) }}
+{% endblock %}

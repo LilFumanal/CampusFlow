@@ -14,33 +14,32 @@ class HistoriqueStatut
     #[ORM\Column]
     private ?int $id = null;
 
-    // Chaque historique appartient obligatoirement à une demande.
     #[ORM\ManyToOne(inversedBy: 'historiqueStatuts')]
     #[ORM\JoinColumn(nullable: false)]
-    private Demande $demande;
+    private ?Demande $demande = null;
 
     #[ORM\Column]
-    private \DateTimeImmutable $date;
+    private ?\DateTimeImmutable $date = null;
 
-    // Obligatoire en base ; il doit être défini avant l’enregistrement.
     #[ORM\Column(length: 255)]
-    private string $statut;
+    private ?string $statut = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $commentaire = null;
 
-    public function __construct()
+    public function __construct(string $statut, ?string $commentaire = null)
     {
-        // La date de création de l’entrée d’historique est automatique.
         $this->date = new \DateTimeImmutable();
+        $this->statut = $statut;
+        $this->commentaire = $commentaire;
     }
 
     public function getId(): ?int
     {
         return $this->id;
     }
-
-    public function getDemande(): Demande
+    
+    public function getDemande(): ?Demande
     {
         return $this->demande;
     }
