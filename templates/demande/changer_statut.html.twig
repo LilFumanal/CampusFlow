@@ -3,12 +3,21 @@
 {% block title %}Changer statut{% endblock %}
 
 {% block body %}
-    <h1>Demande n° {{demande.id}}</h1>
+    <h1>Changer le statut de la demande n° {{ demande.id }}</h1>
 
-    {{ form_start(form) }}
-        {{ form_row(form.statut) }}
-        {{ form_row(form.commentaire) }}
+    <div class="card">
+        <p style="margin-top: 0;">
+            Statut actuel : <span class="badge">{{ demande.statut }}</span>
+        </p>
 
-        <button type="submit">Envoyer la demande</button>
-    {{ form_end(form) }}
+        {{ form_start(form) }}
+            {{ form_row(form.statut) }}
+            {{ form_row(form.commentaire) }}
+
+            <div style="display: flex; gap: .75rem; flex-wrap: wrap;">
+                <button type="submit">Mettre à jour le statut</button>
+                <a href="{{ path('app_demande_traiter') }}" class="btn btn-outline">Annuler</a>
+            </div>
+        {{ form_end(form) }}
+    </div>
 {% endblock %}

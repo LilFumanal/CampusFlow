@@ -5,10 +5,16 @@
 {% block body %}
     <h1>Déposer une demande</h1>
 
-    {{ form_start(form) }}
-        {{ form_row(form.email) }}
-        {{ form_row(form.texte) }}
+    <div class="card">
+        <p style="color: var(--muted); margin-top: 0;">
+            Remplissez le formulaire ci-dessous, nous reviendrons vers vous rapidement.
+        </p>
 
-        <button type="submit">Envoyer la demande</button>
-    {{ form_end(form) }}
+        {{ form_start(form) }}
+            {{ form_row(form.email) }}
+            {{ form_row(form.texte) }}
+
+            <button type="submit">Envoyer la demande</button>
+        {{ form_end(form) }}
+    </div>
 {% endblock %}
