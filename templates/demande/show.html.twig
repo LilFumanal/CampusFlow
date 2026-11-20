@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+{% block title %}Demande n° {{ demande.id }}{% endblock %}
+
+{% block body %}
+    <h1>Demande n°{{demande.id}}</h1>
+    <p> Utilisateur: {{demande.email}} </p>
+    <p> Demande: {{demande.texte}} </p>
+    <p>Statut: {{demande.statut}} </p>
+    <p>Date: {{demande.dateCreation|date('d/m/Y H:i')}}
+    </p>
+{%endblock%}

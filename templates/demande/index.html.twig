@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Déposer une demande{% endblock %}
+
+{% block body %}
+    <h1>Déposer une demande</h1>
+
+    {{ form_start(form) }}
+        {{ form_row(form.email) }}
+        {{ form_row(form.texte) }}
+
+        <button type="submit">Envoyer la demande</button>
+    {{ form_end(form) }}
+{% endblock %}

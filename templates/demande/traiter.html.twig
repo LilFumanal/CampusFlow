@@ -1,0 +1,15 @@
+{% block body %}
+    <h1>Traiter les demandes</h1>
+
+    {% for demande in demandes %}
+        <article>
+            <h2>Demande n° {{ demande.id }}</h2>
+            <p>Statut : {{ demande.statut }}</p>
+            <a href="{{ path('app_demande_show', { id: demande.id }) }}">
+                Voir le détail
+            </a>
+        </article>
+    {% else %}
+        <p>Aucune demande pour le moment.</p>
+    {% endfor %}
+{% endblock %}
