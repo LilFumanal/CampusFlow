@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Changer statut{% endblock %}
+
+{% block body %}
+    <h1>Changer le statut de la demande n° {{ demande.id }}</h1>
+
+    <div class="card">
+        <p style="margin-top: 0;">
+            Statut actuel : <span class="badge">{{ demande.statut }}</span>
+        </p>
+
+        {{ form_start(form) }}
+            {{ form_row(form.statut) }}
+            {{ form_row(form.commentaire) }}
+
+            <div style="display: flex; gap: .75rem; flex-wrap: wrap;">
+                <button type="submit">Mettre à jour le statut</button>
+                <a href="{{ path('app_demande_traiter') }}" class="btn btn-outline">Annuler</a>
+            </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

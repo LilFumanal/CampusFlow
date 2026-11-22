@@ -1,0 +1,134 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Demande n° {{ demande.id }}{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .detail-header h1 { margin: 0; }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+        .detail-item small {
+            display: block;
+            color: var(--muted);
+            font-size: .8rem;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: .2rem;
+        }
+        .detail-item.full { grid-column: 1 / -1; }
+        .detail-texte {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 8px;
+            white-space: pre-line;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 1.75rem;
+            margin-top: 1rem;
+        }
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 6px;
+            top: 6px;
+            bottom: 6px;
+            width: 2px;
+            background: var(--border);
+        }
+        .historique-entree {
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+        .historique-entree:last-child { padding-bottom: 0; }
+        .historique-entree::before {
+            content: "";
+            position: absolute;
+            left: -1.75rem;
+            top: 6px;
+            width: 14px;
+            height: 14px;
+            background: var(--primary);
+            border: 3px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+        .historique-date {
+            color: var(--muted);
+            font-size: .85rem;
+            margin: .25rem 0;
+        }
+        .historique-commentaire {
+            background: var(--bg);
+            padding: .6rem .9rem;
+            border-radius: 8px;
+            margin: .5rem 0 0;
+            font-size: .95rem;
+        }
+
+        @media (max-width: 600px) {
+            .detail-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="detail-header">
+        <h1>Demande n° {{ demande.id }}</h1>
+        <span class="badge">{{ demande.statut }}</span>
+    </div>
+
+    <div class="card">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <small>Utilisateur</small>
+                {{ demande.email }}
+            </div>
+            <div class="detail-item">
+                <small>Date de création</small>
+                {{ demande.dateCreation|date('d/m/Y H:i') }}
+            </div>
+            <div class="detail-item full">
+                <small>Demande</small>
+                <div class="detail-texte">{{ demande.texte }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Historique des statuts</h2>
+
+        <div class="timeline">
+            {% for entree in demande.historiqueStatuts %}
+                <article class="historique-entree">
+                    <span class="badge">{{ entree.statut }}</span>
+                    <p class="historique-date">
+                        {{ entree.date|date('d/m/Y à H:i') }}
+                    </p>
+
+                    {% if entree.commentaire %}
+                        <p class="historique-commentaire">{{ entree.commentaire }}</p>
+                    {% endif %}
+                </article>
+            {% else %}
+                <p style="color: var(--muted);">Aucun historique pour cette demande.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <a href="{{ path('app_demande_traiter') }}" class="btn btn-outline">← Retour à la liste</a>
+{% endblock %}

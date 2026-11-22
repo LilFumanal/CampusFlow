@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Déposer une demande{% endblock %}
+
+{% block body %}
+    <h1>Déposer une demande</h1>
+
+    <div class="card">
+        <p style="color: var(--muted); margin-top: 0;">
+            Remplissez le formulaire ci-dessous, nous reviendrons vers vous rapidement.
+        </p>
+
+        {{ form_start(form) }}
+            {{ form_row(form.email) }}
+            {{ form_row(form.texte) }}
+
+            <button type="submit">Envoyer la demande</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
