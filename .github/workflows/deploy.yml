@@ -40,3 +40,59 @@ jobs:
             ghcr.io/${{ steps.vars.outputs.repo_lower }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy deployment files
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /opt/campusflow/docker/nginx"
+          scp docker-compose.prod.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/campusflow/
+          scp docker/nginx/default.conf ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/campusflow/docker/nginx/
+
+      - name: Generate .env.prod and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /opt/campusflow
+          umask 077
+          cat > .env.prod <<EOF
+          APP_ENV=prod
+          APP_SECRET=${{ secrets.APP_SECRET }}
+          POSTGRES_USER=campusflow
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=campusflow
+          DATABASE_URL=postgresql://campusflow:${{ secrets.POSTGRES_PASSWORD }}@db:5432/campusflow?serverVersion=16
+          GITHUB_REPOSITORY_LOWER=${{ needs.build-and-push.outputs.repo_lower }}
+          IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
+          EOF
+          docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+          docker compose -f docker-compose.prod.yml --env-file .env.prod down
+          docker volume rm campusflow_app_public || true
+          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+          docker image prune -f
+          REMOTE
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS -o /dev/null "http://${{ secrets.SSH_HOST }}:8090"; then
+              echo "App OK"; exit 0
+            fi
+            echo "Tentative $i/12 échouée, nouvelle tentative dans 5 s"
+            sleep 5
+          done
+          echo "L'application ne répond pas" >&2
+          exit 1
