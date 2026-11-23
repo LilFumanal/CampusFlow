@@ -82,7 +82,7 @@ jobs:
           docker compose -f docker-compose.prod.yml --env-file .env.prod down
           docker volume rm campusflow_app_public || true
           docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --remove-orphans
-          docker compose -f docker-compose.prod.yml --env-file .env.prod -d --wait db
+          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --wait db
           docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T app php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
           docker image prune -f
           REMOTE
