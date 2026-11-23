@@ -1,0 +1,28 @@
+
+# Secrets et configuration locale
+.env.local
+.env.*.local
+.env.prod
+.env.dev
+.env.test
+
+# Git et CI
+.git
+.gitignore
+.github
+
+# Dépendances et artefacts locaux (reconstruits dans l'image)
+vendor
+node_modules
+var
+
+# Docker et divers
+docker-compose*.yml
+Dockerfile
+.dockerignore
+docker/nginx
+
+# IDE et OS
+.idea
+.vscode
+*.log
