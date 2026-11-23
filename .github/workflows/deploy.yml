@@ -3,13 +3,64 @@ name: CI/CD
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
   packages: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Base PostgreSQL éphémère, créée uniquement pour les tests
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: campusflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, mbstring, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Prepare test database
+        env:
+          APP_ENV: test
+          DATABASE_URL: postgresql://test:test@127.0.0.1:5432/campusflow?serverVersion=16&charset=utf8
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists
+          php bin/console doctrine:schema:create --env=test
+
+      - name: Run tests
+        env:
+          APP_ENV: test
+          DATABASE_URL: postgresql://test:test@127.0.0.1:5432/campusflow?serverVersion=16&charset=utf8
+        run: php bin/phpunit
+
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.vars.outputs.sha_short }}
@@ -40,6 +91,8 @@ jobs:
             ghcr.io/${{ steps.vars.outputs.repo_lower }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
