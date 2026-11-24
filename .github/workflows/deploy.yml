@@ -101,6 +101,28 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          if [ -z "$SSH_HOST" ]; then
+            echo "::error::Le secret SSH_HOST est vide ou absent"
+            exit 1
+          fi
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::Le secret SSH_PRIVATE_KEY est vide ou absent"
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null || { echo "::error::Clé privée invalide"; exit 1; }
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Test SSH
+        run: ssh -o BatchMode=yes "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" 'echo connexion ok'
 
       - name: Configure SSH
         run: |
