@@ -130,5 +130,9 @@
         </div>
     </div>
 
-    <a href="{{ path('app_demande_traiter') }}" class="btn btn-outline">← Retour à la liste</a>
+    {% if is_granted('ROLE_ADMIN') %}
+        <a href="{{ path('app_demande_traiter') }}" class="btn btn-outline">← Retour à la liste</a>
+    {% else %}
+        <a href="{{ path('app_mes_demandes') }}" class="btn btn-outline">← Mes demandes</a>
+    {% endif %}
 {% endblock %}

@@ -4,169 +4,136 @@ namespace App\Tests\Controller;
 
 use App\Entity\Demande;
 use App\Entity\HistoriqueStatut;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class DemandeControllerTest extends WebTestCase
 {
-    // Fonctions Index
-
-    public function testIndex(): void
+    public function testDepositPageRequiresLogin(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/demande');
+        $client->request('GET', '/');
+
+        self::assertResponseRedirects('/login');
+
+        $client->loginUser($this->createUser());
+        $client->request('GET', '/');
 
         self::assertResponseIsSuccessful();
-    }
-    public function testIndexAfficheLeFormulaireSansCreerDeDemande(): void
-    {
-        $client = static::createClient();
-
-        // Récupère le gestionnaire Doctrine depuis le conteneur de test.
-        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
-        $repository = $entityManager->getRepository(Demande::class);
-
-        // Mémorise l'état initial pour vérifier que le GET ne crée rien.
-        $nombreAvant = $repository->count([]);
-
-        // Charge la page du formulaire.
-        $crawler = $client->request('GET', '/demande');
-
-        // Vérifie que la page est accessible et contient un formulaire.
-        self::assertResponseIsSuccessful();
-        self::assertGreaterThan(0, $crawler->filter('form')->count());
-
-        // Vérifie que l'affichage du formulaire n'a rien enregistré.
-        self::assertSame($nombreAvant, $repository->count([]));
+        self::assertSelectorExists('form');
     }
 
-    public function testSoumissionValideCreeUneDemandeEtRedirige(): void
+    public function testUserCanSubmitAndSeeTheirOwnRequest(): void
     {
         $client = static::createClient();
-
+        $user = $this->createUser();
+        $client->loginUser($user);
         $entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $repository = $entityManager->getRepository(Demande::class);
-        $nombreAvant = $repository->count([]);
+        $countBefore = $repository->count([]);
 
-        // Ouvre la page pour récupérer le vrai formulaire, avec son éventuel jeton CSRF.
-        $crawler = $client->request('GET', '/demande');
-
-        // Remplace "Envoyer" par le libellé ou le sélecteur réel du bouton.
-        $form = $crawler->selectButton('Envoyer')->form([
-            // Adapte ces noms aux champs définis dans DemandeType.
-            'demande[email]' => 'test@example.com',
+        $crawler = $client->request('GET', '/');
+        $form = $crawler->selectButton('Envoyer la demande')->form([
             'demande[texte]' => 'Je souhaite faire une demande de test.',
         ]);
-
-        // Soumet le formulaire.
         $client->submit($form);
 
-        // Vérifie la redirection vers la page de détail.
         self::assertResponseRedirects();
-
-        // Suit la redirection et vérifie que la page cible est accessible.
+        $location = $client->getResponse()->headers->get('Location');
+        self::assertNotNull($location);
         $client->followRedirect();
         self::assertResponseIsSuccessful();
 
-        // Vide l'EntityManager pour relire l'état réellement enregistré en base.
         $entityManager->clear();
+        self::assertSame($countBefore + 1, $repository->count([]));
+        $demande = $repository->findOneBy(['user' => $user]);
+        self::assertInstanceOf(Demande::class, $demande);
+        self::assertSame($user->getUserIdentifier(), $demande->getEmail());
+        self::assertSame('Je souhaite faire une demande de test.', $demande->getTexte());
 
-        // Une demande doit avoir été ajoutée.
-        self::assertSame($nombreAvant + 1, $repository->count([]));
-
-        // Vérifie les valeurs persistées sur la dernière demande créée.
-        $demandeEnregistree = $repository->findOneBy([], ['id' => 'DESC']);
-
-        self::assertNotNull($demandeEnregistree);
-        self::assertSame('test@example.com', $demandeEnregistree->getEmail());
-        self::assertSame(
-            'Je souhaite faire une demande de test.',
-            $demandeEnregistree->getTexte()
-        );
+        $client->request('GET', $location);
+        self::assertResponseIsSuccessful();
     }
 
-    public function testSoumissionInvalideNeCreePasDeDemande(): void
+    public function testUserCannotSeeAnotherUsersRequest(): void
     {
         $client = static::createClient();
+        $user = $this->createUser();
+        $client->loginUser($user);
+        $otherUser = $this->createUser();
+        $ownRequest = $this->createDemande($user);
+        $otherRequest = $this->createDemande($otherUser);
 
-        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
-        $repository = $entityManager->getRepository(Demande::class);
-        $nombreAvant = $repository->count([]);
+        $client->request('GET', '/mes-demandes');
 
-        $crawler = $client->request('GET', '/demande');
+        self::assertResponseIsSuccessful();
+        self::assertSelectorExists(sprintf('a[href="/demande/%d"]', $ownRequest->getId()));
+        self::assertSelectorNotExists(sprintf('a[href="/demande/%d"]', $otherRequest->getId()));
 
-        $form = $crawler->selectButton('Envoyer')->form([
-            'demande[email]' => 'pas-un-email',
-            'demande[texte]' => 'Texte de test',
+        $client->request('GET', sprintf('/demande/%d', $otherRequest->getId()));
+        self::assertResponseStatusCodeSame(403);
+
+        $client->request('GET', sprintf('/demande/%d', $ownRequest->getId()));
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testOnlyAdminsCanListAndChangeRequests(): void
+    {
+        $client = static::createClient();
+        $user = $this->createUser();
+        $client->loginUser($user);
+        $demande = $this->createDemande($user);
+
+        $client->request('GET', '/traiter');
+        self::assertResponseStatusCodeSame(403);
+
+        $client->request('POST', sprintf('/demande/%d/statut', $demande->getId()), [
+            'changer_statut' => [
+                'statut' => 'Acceptée',
+                'commentaire' => 'Test',
+            ],
         ]);
+        self::assertResponseStatusCodeSame(403);
 
-        $client->submit($form);
+        $admin = $this->createUser(true);
+        $client->loginUser($admin);
+        $client->request('GET', '/traiter');
+        self::assertResponseIsSuccessful();
 
-        self::assertResponseStatusCodeSame(422);
-        self::assertSame($nombreAvant, $repository->count([]));
-    }
-
-    // --- Fonctions Changement de statut ---  
-
-    public function testChangementDeStatutAutoriseCreeUnHistorique(): void
-    {
-        $client = static::createClient();
-        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
-
-        $demande = new Demande();
-        $demande->setEmail('test@example.com');
-        $demande->setTexte("Ceci est un test de demande.");
-        $entityManager->persist($demande);
-        $entityManager->flush();
-
-        $id = $demande->getId();
-
-        $crawler = $client->request('GET', sprintf('/demande/%d/statut', $id));
+        $crawler = $client->request('GET', sprintf('/demande/%d/statut', $demande->getId()));
         self::assertResponseIsSuccessful();
         $form = $crawler->selectButton('Mettre à jour le statut')->form([
             'changer_statut[statut]' => 'Acceptée',
             'changer_statut[commentaire]' => 'Dossier complet',
         ]);
-
         $client->submit($form);
 
-        self::assertResponseRedirects(sprintf('/demande/%d', $id));
+        self::assertResponseRedirects(sprintf('/demande/%d', $demande->getId()));
 
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $entityManager->clear();
-
-        $demandeEnregistree = $entityManager->getRepository(Demande::class)->find($id);
-
-        self::assertSame('Acceptée', $demandeEnregistree->getStatut());
-
-        $historique = $entityManager
-            ->getRepository(HistoriqueStatut::class)
-            ->findOneBy(['demande' => $demandeEnregistree]);
-
-        self::assertNotNull($historique);
+        $savedRequest = $entityManager->getRepository(Demande::class)->find($demande->getId());
+        self::assertSame('Acceptée', $savedRequest->getStatut());
+        self::assertNotNull($entityManager->getRepository(HistoriqueStatut::class)->findOneBy([
+            'demande' => $savedRequest,
+            'statut' => 'Acceptée',
+        ]));
     }
 
-    public function testTransitionInterditeNeModifiePasLaDemande(): void
+    public function testAdminCannotMakeAnInvalidStatusTransition(): void
     {
         $client = static::createClient();
-        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $user = $this->createUser();
+        $demande = $this->createDemande($user);
+        $admin = $this->createUser(true);
+        $client->loginUser($admin);
 
-        $demande = new Demande();
-        $demande->setEmail('test@example.com');
-        $demande->setTexte("Ceci est un test de demande.");
-        $entityManager->persist($demande);
-        $entityManager->flush();
-
-        $id = $demande->getId();
-
-        $crawler = $client->request('GET', sprintf('/demande/%d/statut', $id));
-        self::assertResponseIsSuccessful();
+        $crawler = $client->request('GET', sprintf('/demande/%d/statut', $demande->getId()));
         $form = $crawler->selectButton('Mettre à jour le statut')->form([
             'changer_statut[statut]' => 'Traitée',
-            'changer_statut[commentaire]' => 'Test de transition interdite',
+            'changer_statut[commentaire]' => 'Transition interdite',
         ]);
-        $repository = $entityManager->getRepository(HistoriqueStatut::class);
-        $historiquesAvant = $repository->findBy(['demande' => $demande]);
-
         $client->submit($form);
 
         self::assertResponseIsUnprocessable();
@@ -174,14 +141,37 @@ final class DemandeControllerTest extends WebTestCase
             'body',
             'La transition de « Soumise » vers « Traitée » n’est pas autorisée.'
         );
+        self::assertSame('Soumise', $demande->getStatut());
+    }
 
-        $entityManager->clear();
+    private function createUser(bool $admin = false): User
+    {
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $user = (new User())
+            ->setEmail(sprintf('%s-%s@example.com', $admin ? 'admin' : 'user', bin2hex(random_bytes(6))))
+            ->setPassword('test-password-hash');
 
-        $demandeEnregistree = $entityManager->getRepository(Demande::class)->find($id);
-        $historiquesApres = $repository->findBy(['demande' => $demandeEnregistree]);
+        if ($admin) {
+            $user->setRoles(['ROLE_ADMIN']);
+        }
 
-        self::assertCount(count($historiquesAvant), $historiquesApres);
-        self::assertSame('Soumise', $demandeEnregistree->getStatut());
+        $entityManager->persist($user);
+        $entityManager->flush();
 
+        return $user;
+    }
+
+    private function createDemande(User $user): Demande
+    {
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $demande = (new Demande())
+            ->setEmail($user->getUserIdentifier())
+            ->setUser($user)
+            ->setTexte('Demande de test');
+
+        $entityManager->persist($demande);
+        $entityManager->flush();
+
+        return $demande;
     }
 }

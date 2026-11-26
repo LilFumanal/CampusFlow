@@ -43,8 +43,9 @@ class Demande
     #[ORM\OrderBy(['date' => 'ASC'])]
     private Collection $historiqueStatuts;
 
-    #[ORM\ManyToOne(inversedBy: 'demande')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $user = null;
 
     public function getId(): ?int
     {
@@ -59,6 +60,18 @@ class Demande
     public function setEmail(string $email): static
     {
         $this->email = $email;
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(User $user): static
+    {
+        $this->user = $user;
 
         return $this;
     }

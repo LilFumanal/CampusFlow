@@ -158,7 +158,7 @@ jobs:
       - name: Smoke test
         run: |
           for i in $(seq 1 12); do
-            if curl -fsS -o /dev/null "http://${{ secrets.SSH_HOST }}:8090/demande"; then
+            if curl -fsS -o /dev/null "http://${{ secrets.SSH_HOST }}:8090/"; then
               echo "App OK"; exit 0
             fi
             echo "Tentative $i/12 échouée, nouvelle tentative dans 5 s"

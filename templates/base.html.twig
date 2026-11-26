@@ -197,8 +197,17 @@
             <div class="navbar-inner">
                 <a href="{{ path('app_demande') }}" class="brand">📬 Gestion des demandes</a>
                 <nav class="nav-links">
-                    <a href="{{ path('app_demande') }}">Déposer</a>
-                    <a href="{{ path('app_demande_traiter') }}">Traiter</a>
+                    {% if app.user %}
+                        <a href="{{ path('app_demande') }}">Déposer</a>
+                        <a href="{{ path('app_mes_demandes') }}">Mes demandes</a>
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <a href="{{ path('app_demande_traiter') }}">Traiter</a>
+                        {% endif %}
+                        <a href="{{ logout_path() }}">Se déconnecter</a>
+                    {% else %}
+                        <a href="{{ path('app_login') }}">Se connecter</a>
+                        <a href="{{ path('app_register') }}">Créer un compte</a>
+                    {% endif %}
                 </nav>
             </div>
         </header>

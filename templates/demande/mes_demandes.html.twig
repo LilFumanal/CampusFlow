@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes demandes{% endblock %}
+
+{% block body %}
+    <h1>Mes demandes</h1>
+
+    {% for demande in demandes %}
+        <article class="card">
+            <h2>Demande n° {{ demande.id }}</h2>
+            <p><span class="badge">{{ demande.statut }}</span></p>
+            <p>Déposée le {{ demande.dateCreation|date('d/m/Y H:i') }}</p>
+            <a href="{{ path('app_demande_show', { id: demande.id }) }}" class="btn btn-outline">
+                Consulter
+            </a>
+        </article>
+    {% else %}
+        <div class="card">
+            <p>Vous n’avez pas encore déposé de demande.</p>
+            <a href="{{ path('app_demande') }}" class="btn">Déposer une demande</a>
+        </div>
+    {% endfor %}
+{% endblock %}
