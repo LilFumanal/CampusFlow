@@ -154,3 +154,22 @@ jobs:
           docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T app php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
           docker image prune -f
           REMOTE
+      - name: Smoke test
+        run: |
+          URL="http://${{ secrets.SSH_HOST }}:8090/login"
+          for i in $(seq 1 12); do
+            CODE=$(curl -sS -o /tmp/smoke-body -w '%{http_code}' \
+              --connect-timeout 5 --max-time 10 "$URL" || true)
+
+            echo "Tentative $i/12 : HTTP ${CODE:-aucune réponse}"
+            if [ "$CODE" -ge 200 ] 2>/dev/null && [ "$CODE" -lt 400 ]; then
+              echo "App OK"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Dernière réponse reçue :"
+          cat /tmp/smoke-body 2>/dev/null || true
+          echo "Échec du smoke test" >&2
+          exit 1
